@@ -116,3 +116,31 @@ main 브랜치에 코드가 푸시되면 GitHub Actions 워크플로우를 통�
 | 배포 대상   | AWS S3 + CloudFront                              |
 | 배포 트리거 | GitHub Actions (main 브랜치 push)                |
 | 주요 기술   | Next.js, GitHub Actions, AWS CLI, S3, CloudFront |
+
+## CDN 도입 전후 요청 성능 비교 (Timing 탭 기준)
+
+### ⬅️ S3 직접 접근 결과
+
+![S3 Timing](./images/s3.png)
+
+### ➡️ CloudFront 접근 결과
+
+![CloudFront Timing](./images/cdn.png)
+
+### 측정 데이터
+
+| 항목                 | S3 직접 접근 | CloudFront 접근 | 개선 효과              |
+| -------------------- | ------------ | --------------- | ---------------------- |
+| Initial connection   | 8.42 ms      | 18.63 ms        | 약간 증가 (HTTPS 포함) |
+| SSL 연결             | 없음         | 10.29 ms        | HTTPS 활성화           |
+| Waiting for response | 45.08 ms     | 16.21 ms        | 🔽 약 64% 감소         |
+| Content download     | 7.17 ms      | 0.44 ms         | 🔽 약 94% 감소         |
+| **총 요청 시간**     | **79.64 ms** | **37.40 ms**    | 🔽 약 53% 감소         |
+
+### 분석 요약
+
+- Initial connection과 SSL 시간은 CloudFront 측이 더 높지만, 이는 보안 연결(HTTPS)이 적용되었기 때문입니다.
+- 응답 대기 시간(Waiting for response)은 S3 대비 약 29ms 감소했습니다.
+- 정적 파일 다운로드 시간(Content download)은 약 7ms 감소했습니다.
+- 총 요청 처리 시간은 S3(79.64ms)에서 CloudFront(37.40ms)로, 약 42ms 줄었습니다.
+- 결과적으로, CloudFront를 통해 정적 파일을 응답받는 데 걸리는 시간이 **S3 직접 접근 대비 약 53% 감소**했습니다.
